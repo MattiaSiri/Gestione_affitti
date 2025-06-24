@@ -33,9 +33,12 @@
 
     async function importa() {
       try {
-        const res = await fetch(URL_BASE);
-        if (!res.ok) throw new Error(res.status);
-        document.getElementById('import-msg').textContent = '✅ Transazioni importate con successo';
+        const res = await fetch(URL_BASE + "?azione=importa", {
+          method: "POST"
+        });
+        const text = await res.text();
+        document.getElementById('import-msg').textContent = text;
+        carica(); // aggiorna la tabella subito dopo
       } catch (e) {
         alert('Errore durante l\'importazione');
         console.error('Errore importazione:', e);
