@@ -6,10 +6,24 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Lista Movimenti</h1>
-  <button onclick="carica()">Aggiorna Tabella</button>
-  <div id="tabella">Caricamento in corso...</div>
-
+  <div class="sidebar">
+    <h2>Gestione Affitti</h2>
+    <ul>
+      <li><a href="index.html">Dashboard</a></li>
+      <li><a href="lista_prenotazioni.html">Prenotazioni</a></li>
+      <li><a href="lista_movimenti.html">Movimenti</a></li>
+    </ul>
+  </div>
+  <div class="main">
+    <div class="topbar">
+      <span class="account">Account</span>
+    </div>
+    <div class="content">
+      <h1>Lista Movimenti</h1>
+      <button class="btn" onclick="carica()">Aggiorna Tabella</button>
+      <div id="tabella">Caricamento in corso...</div>
+    </div>
+  </div>
   <script>
     const URL_BASE = "https://script.google.com/macros/s/AKfycbyOt1OlCuLq0DsWsc0l2PvMGrZUZTbEu2C0bY7G5Tz6M4uZzF_UPJo94vSS8V1CM1xv/exec";
 
