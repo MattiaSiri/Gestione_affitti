@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Lista Movimenti</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Lista Movimenti</h1>
+  <button onclick="carica()">Aggiorna Tabella</button>
+  <div id="tabella">Caricamento in corso...</div>
+
+  <script>
+    const URL_BASE = "https://script.google.com/macros/s/AKfycbyOt1OlCuLq0DsWsc0l2PvMGrZUZTbEu2C0bY7G5Tz6M4uZzF_UPJo94vSS8V1CM1xv/exec";
+
+    async function carica() {
+      try {
+        const res = await fetch(`${URL_BASE}?foglio=MOVIMENTI`);
+        const data = await res.json();
+
+        let html = "<table><thead><tr>";
+        data[0].forEach(col => html += `<th>${col}</th>`);
+        html += "</tr></thead><tbody>";
+        data.slice(1).forEach(row => {
+          html += "<tr>";
+          row.forEach(cell => html += `<td>${cell ?? ""}</td>`);
+          html += "</tr>";
+        });
+        html += "</tbody></table>";
+        document.getElementById("tabella").innerHTML = html;
+      } catch (error) {
+        document.getElementById("tabella").innerHTML = `<p style='color:red;'>Errore: ${error}</p>`;
+        console.error("Errore fetch:", error);
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", carica);
+  </script>
+</body>
+</html>
