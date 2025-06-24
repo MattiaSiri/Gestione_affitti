@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Dashboard</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
   <div class="sidebar">
@@ -19,23 +20,30 @@
       <span class="account">Account</span>
     </div>
     <div class="content">
+      <h1 class="page-title">Gestione Affitti</h1>
       <div class="stats">
-        <div class="stat-card">
-          <h3>Prenotazioni</h3>
-          <p id="totPren">-</p>
+        <div class="stat-card prenotazioni">
+          <i class="fa-solid fa-calendar-check stat-icon"></i>
+          <div class="stat-info">
+            <h3>Prenotazioni</h3>
+            <p id="totPren">-</p>
+          </div>
         </div>
-        <div class="stat-card">
-          <h3>Entrate</h3>
-          <p id="totEntrate">-</p>
+        <div class="stat-card entrate">
+          <i class="fa-solid fa-euro-sign stat-icon"></i>
+          <div class="stat-info">
+            <h3>Entrate</h3>
+            <p id="totEntrate">-</p>
+          </div>
         </div>
       </div>
       <div class="actions">
         <a class="btn" href="lista_prenotazioni.html">Lista Prenotazioni</a>
         <a class="btn" href="lista_movimenti.html">Lista Movimenti</a>
       </div>
-      <div class="card">
-        <h2>Prossimi Check-in</h2>
-        <button onclick="caricaDashboard()">Aggiorna</button>
+      <div class="card" id="checkin-card">
+        <h2>📅 Prossimi Check-in</h2>
+        <button class="btn" onclick="caricaDashboard()">Aggiorna</button>
         <div id="dashboard">Caricamento in corso...</div>
       </div>
     </div>
@@ -45,6 +53,12 @@
 
     function parseDate(iso) {
       return new Date(iso);
+    }
+
+    function formatDate(iso) {
+      const d = parseDate(iso);
+      if (isNaN(d)) return '';
+      return d.toLocaleDateString('it-IT');
     }
 
     async function caricaStatistiche() {
@@ -94,8 +108,8 @@
           html += '<tr>' +
             `<td>${row[idxApp] ?? ''}</td>` +
             `<td>${row[idxNome] ?? ''}</td>` +
-            `<td>${row[idxIn] ?? ''}</td>` +
-            `<td>${row[idxOut] ?? ''}</td>` +
+            `<td>${formatDate(row[idxIn])}</td>` +
+            `<td>${formatDate(row[idxOut])}</td>` +
             '</tr>';
         });
         html += '</tbody></table>';
