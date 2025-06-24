@@ -2,48 +2,68 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard Prenotazioni</title>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background-color: #f7f9fb; }
-    h1 { color: #1877F2; }
-    button { background-color: #1877F2; color: white; border: none; padding: 10px 20px; margin: 10px 0; cursor: pointer; }
-    table { border-collapse: collapse; width: 100%; margin-top: 20px; background: white; }
-    th, td { border: 1px solid #ddd; padding: 8px; font-size: 12px; }
-    th { background-color: #1877F2; color: white; position: sticky; top: 0; }
-    tr:nth-child(even) { background-color: #f2f2f2; }
-  </style>
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Dashboard Prenotazioni</h1>
-  <button onclick="carica()">Aggiorna Tabella</button>
-  <div id="tabella">Caricamento in corso...</div>
+  <h1>Prossimi Check-in</h1>
+  <div class="card">
+    <button onclick="caricaDashboard()">Aggiorna</button>
+    <div id="dashboard">Caricamento in corso...</div>
+  </div>
 
   <script>
     const URL_BASE = "https://script.google.com/macros/s/AKfycbyOt1OlCuLq0DsWsc0l2PvMGrZUZTbEu2C0bY7G5Tz6M4uZzF_UPJo94vSS8V1CM1xv/exec";
 
-    async function carica() {
+    function parseDate(itDate) {
+      const [d, m, y] = itDate.split('/').map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    async function caricaDashboard() {
       try {
         const res = await fetch(`${URL_BASE}?foglio=PRENOTAZIONI`);
         const data = await res.json();
 
-        let html = "<table><thead><tr>";
-        data[0].forEach(col => html += `<th>${col}</th>`);
-        html += "</tr></thead><tbody>";
-        data.slice(1).forEach(row => {
-          html += "<tr>";
-          row.forEach(cell => html += `<td>${cell ?? ""}</td>`);
-          html += "</tr>";
+        const headers = data[0];
+        const rows = data.slice(1);
+
+        const idxApp = headers.indexOf('Appartamento');
+        const idxNome = headers.indexOf('Nome e Cognome');
+        const idxIn = headers.indexOf('Check-in');
+        const idxOut = headers.indexOf('Check-out');
+
+        const now = new Date();
+        const limit = new Date();
+        limit.setDate(limit.getDate() + 30);
+
+        const filtered = rows.filter(row => {
+          const dateStr = row[idxIn];
+          if (!dateStr) return false;
+          const dt = parseDate(dateStr);
+          return dt >= now && dt <= limit;
         });
-        html += "</tbody></table>";
-        document.getElementById("tabella").innerHTML = html;
+
+        let html = '<table><thead><tr>' +
+          '<th>Appartamento</th><th>Nome e Cognome</th><th>Check-in</th><th>Check-out</th>' +
+          '</tr></thead><tbody>';
+        filtered.forEach(row => {
+          html += '<tr>' +
+            `<td>${row[idxApp] ?? ''}</td>` +
+            `<td>${row[idxNome] ?? ''}</td>` +
+            `<td>${row[idxIn] ?? ''}</td>` +
+            `<td>${row[idxOut] ?? ''}</td>` +
+            '</tr>';
+        });
+        html += '</tbody></table>';
+        document.getElementById('dashboard').innerHTML = html || '<p>Nessun arrivo prossimo.</p>';
       } catch (error) {
-        document.getElementById("tabella").innerHTML = `<p style="color:red;">Errore: ${error}</p>`;
-        console.error("Errore fetch:", error);
+        document.getElementById('dashboard').innerHTML = `<p style='color:red;'>Errore: ${error}</p>`;
+        console.error('Errore fetch:', error);
       }
     }
 
-    // Caricamento iniziale
-    document.addEventListener("DOMContentLoaded", carica);
+    document.addEventListener('DOMContentLoaded', caricaDashboard);
   </script>
 </body>
 </html>
