@@ -1,31 +1,122 @@
-/* Basic modern style */
+/* Basic modern admin style */
+* {
+  box-sizing: border-box;
+}
+
 body {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   margin: 0;
-  padding: 20px;
   background-color: #f5f7fa;
   color: #333;
+  display: flex;
 }
 
-h1 {
-  color: #1877F2;
+.sidebar {
+  width: 220px;
+  background: #2e3b55;
+  color: #fff;
+  padding: 20px;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.sidebar h2 {
   margin-top: 0;
+  font-size: 20px;
+  color: #fff;
 }
 
-button {
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0 0 0;
+}
+
+.sidebar li {
+  margin-bottom: 10px;
+}
+
+.sidebar a {
+  color: #fff;
+  text-decoration: none;
+  padding: 8px 10px;
+  display: block;
+  border-radius: 4px;
+}
+
+.sidebar a:hover {
+  background: #1877f2;
+}
+
+.main {
+  margin-left: 220px;
+  padding: 20px;
+  width: calc(100% - 220px);
+}
+
+.topbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  background: #fff;
+  padding: 10px 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.stats {
+  display: flex;
+  gap: 20px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+.stat-card {
+  flex: 1;
+  min-width: 180px;
+  background: #fff;
+  padding: 15px;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.stat-card h3 {
+  margin-top: 0;
+  color: #1877f2;
+}
+
+.btn {
   background-color: #1877F2;
   color: #fff;
   border: none;
   padding: 10px 20px;
-  margin: 10px 0;
+  margin: 5px;
   cursor: pointer;
   border-radius: 5px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  transition: background-color 0.2s ease;
+  text-decoration: none;
+  display: inline-block;
 }
 
-button:hover {
+.btn:hover {
   background-color: #145dbf;
+}
+
+.card {
+  background: #fff;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  border-radius: 5px;
+  margin-top: 20px;
+}
+
+h1, h2 {
+  color: #1877F2;
+  margin-top: 0;
 }
 
 table {
@@ -53,9 +144,16 @@ tr:nth-child(even) {
   background-color: #f2f2f2;
 }
 
-.card {
-  background: #fff;
-  padding: 20px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  border-radius: 5px;
+@media (max-width: 768px) {
+  .sidebar {
+    position: static;
+    width: 100%;
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .main {
+    margin-left: 0;
+    width: 100%;
+  }
 }

@@ -6,18 +6,61 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Prossimi Check-in</h1>
-  <div class="card">
-    <button onclick="caricaDashboard()">Aggiorna</button>
-    <div id="dashboard">Caricamento in corso...</div>
+  <div class="sidebar">
+    <h2>Gestione Affitti</h2>
+    <ul>
+      <li><a href="index.html">Dashboard</a></li>
+      <li><a href="lista_prenotazioni.html">Prenotazioni</a></li>
+      <li><a href="lista_movimenti.html">Movimenti</a></li>
+    </ul>
   </div>
-
+  <div class="main">
+    <div class="topbar">
+      <span class="account">Account</span>
+    </div>
+    <div class="content">
+      <div class="stats">
+        <div class="stat-card">
+          <h3>Prenotazioni</h3>
+          <p id="totPren">-</p>
+        </div>
+        <div class="stat-card">
+          <h3>Entrate</h3>
+          <p id="totEntrate">-</p>
+        </div>
+      </div>
+      <div class="actions">
+        <a class="btn" href="lista_prenotazioni.html">Lista Prenotazioni</a>
+        <a class="btn" href="lista_movimenti.html">Lista Movimenti</a>
+      </div>
+      <div class="card">
+        <h2>Prossimi Check-in</h2>
+        <button onclick="caricaDashboard()">Aggiorna</button>
+        <div id="dashboard">Caricamento in corso...</div>
+      </div>
+    </div>
+  </div>
   <script>
     const URL_BASE = "https://script.google.com/macros/s/AKfycbyOt1OlCuLq0DsWsc0l2PvMGrZUZTbEu2C0bY7G5Tz6M4uZzF_UPJo94vSS8V1CM1xv/exec";
 
-    function parseDate(itDate) {
-      const [d, m, y] = itDate.split('/').map(Number);
-      return new Date(y, m - 1, d);
+    function parseDate(iso) {
+      return new Date(iso);
+    }
+
+    async function caricaStatistiche() {
+      try {
+        const prenRes = await fetch(`${URL_BASE}?foglio=PRENOTAZIONI`);
+        const prenData = await prenRes.json();
+        document.getElementById('totPren').textContent = prenData.length - 1;
+
+        const movRes = await fetch(`${URL_BASE}?foglio=MOVIMENTI`);
+        const movData = await movRes.json();
+        const idxImp = movData[0].indexOf('Importo');
+        const totale = movData.slice(1).reduce((sum, r) => sum + parseFloat(r[idxImp] || 0), 0);
+        document.getElementById('totEntrate').textContent = totale.toFixed(2);
+      } catch (e) {
+        console.error('Errore statistiche:', e);
+      }
     }
 
     async function caricaDashboard() {
@@ -58,12 +101,15 @@
         html += '</tbody></table>';
         document.getElementById('dashboard').innerHTML = html || '<p>Nessun arrivo prossimo.</p>';
       } catch (error) {
-        document.getElementById('dashboard').innerHTML = `<p style='color:red;'>Errore: ${error}</p>`;
+        document.getElementById('dashboard').innerHTML = `<p style="color:red;">Errore: ${error}</p>`;
         console.error('Errore fetch:', error);
       }
     }
 
-    document.addEventListener('DOMContentLoaded', caricaDashboard);
+    document.addEventListener('DOMContentLoaded', () => {
+      caricaDashboard();
+      caricaStatistiche();
+    });
   </script>
 </body>
 </html>
