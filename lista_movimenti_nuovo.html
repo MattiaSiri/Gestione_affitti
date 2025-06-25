@@ -20,7 +20,7 @@
     <div class="topbar">
       <span class="account">Account</span>
     </div>
-    
+
     <div class="content">
       <h1>Importa e Visualizza Transazioni</h1>
 
@@ -40,13 +40,12 @@
 
     async function importa() {
       try {
-        const res = await fetch(`${URL_BASE}?azione=importa`);  // usa GET
+        const res = await fetch(`${URL_BASE}?azione=importa`, { method: "POST" });
         const text = await res.text();
         document.getElementById('import-msg').textContent = text;
-        carica();
       } catch (e) {
         alert("Errore durante l'importazione");
-        console.error("Errore fetch importa():", e);
+        console.error("Errore importa():", e);
       }
     }
 
@@ -60,15 +59,15 @@
         html += "</tr></thead><tbody>";
         data.slice(1).forEach(row => {
           html += "<tr>";
-          row.forEach(cell => html += `<td>${cell ?? ""}</td>`);
+          row.forEach(cell => html += `<td>${cell}</td>`);
           html += "</tr>";
         });
         html += "</tbody></table>";
 
         document.getElementById("tabella").innerHTML = html;
       } catch (e) {
-        document.getElementById("tabella").innerHTML = `<p style='color:red;'>Errore caricamento: ${e}</p>`;
-        console.error("Errore fetch carica():", e);
+        document.getElementById("tabella").innerHTML = `<p style='color:red;'>Errore: ${e}</p>`;
+        console.error("Errore carica():", e);
       }
     }
 
