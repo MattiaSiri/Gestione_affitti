@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Calendario Prenotazioni</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    #cal-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .mini-cal {
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 5px;
+      text-align: center;
+      font-size: 12px;
+    }
+    .cal-header {
+      font-weight: bold;
+      margin-bottom: 4px;
+      font-size: 12px;
+    }
+    .mini-cal table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .mini-cal th,
+    .mini-cal td {
+      border: 1px solid #ddd;
+      width: 14%;
+      height: 20px;
+      padding: 2px;
+      font-size: 10px;
+    }
+    .mini-cal td.other {
+      background: #f9f9f9;
+    }
+    .mini-cal td.santa {
+      background: #3498db;
+      color: #fff;
+    }
+    .mini-cal td.lathuile {
+      background: #f1c40f;
+    }
+    .mini-cal td.both {
+      background: linear-gradient(45deg, #3498db 50%, #f1c40f 50%);
+      color: #000;
+    }
+    @media (max-width: 768px) {
+      #cal-container { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 480px) {
+      #cal-container { grid-template-columns: repeat(1, 1fr); }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js"></script>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Gestione Affitti</h2>
+    <ul>
+      <li><a href="index.html">Dashboard</a></li>
+      <li><a href="lista_prenotazioni.html">Prenotazioni</a></li>
+      <li><a href="lista_movimenti.html">Movimenti</a></li>
+    </ul>
+  </div>
+  <div class="main">
+    <div class="topbar">
+      <span class="account">Account</span>
+    </div>
+    <div class="content">
+      <h1 class="page-title">Calendario Prenotazioni</h1>
+      <div id="cal-container"></div>
+    </div>
+  </div>
+  <script>
+    const URL_BASE = "https://script.google.com/macros/s/AKfycbyOt1OlCuLq0DsWsc0l2PvMGrZUZTbEu2C0bY7G5Tz6M4uZzF_UPJo94vSS8V1CM1xv/exec";
+
+    async function fetchPrenotazioni() {
+      const res = await fetch(`${URL_BASE}?foglio=PRENOTAZIONI`);
+      const data = await res.json();
+      const headers = data[0];
+      const idxApt = headers.indexOf('Appartamento');
+      const idxIn = headers.indexOf('Check-in');
+      const idxOut = headers.indexOf('Check-out');
+      const bookings = {};
+      data.slice(1).forEach(row => {
+        const apt = (row[idxApt] || '').trim().toUpperCase();
+        const inDate = dayjs(row[idxIn]);
+        const outDate = dayjs(row[idxOut]);
+        if (!inDate.isValid() || !outDate.isValid()) return;
+        for (let d = inDate.clone(); d.isBefore(outDate, 'day'); d = d.add(1, 'day')) {
+          const key = d.format('YYYY-MM-DD');
+          if (!bookings[key]) bookings[key] = { SANTA:false, LATHUILE:false };
+          if (apt.includes('SANTA')) bookings[key].SANTA = true;
+          if (apt.includes('LATHUILE')) bookings[key].LATHUILE = true;
+        }
+      });
+      renderCalendars(bookings);
+    }
+
+    function renderCalendars(bookings) {
+      const container = document.getElementById('cal-container');
+      container.innerHTML = '';
+      const start = dayjs().startOf('month');
+      for (let i = 0; i < 12; i++) {
+        const m = start.add(i, 'month');
+        container.appendChild(createCalendar(m, bookings));
+      }
+    }
+
+    function createCalendar(month, bookings) {
+      const cal = document.createElement('div');
+      cal.className = 'mini-cal';
+      const header = document.createElement('div');
+      header.className = 'cal-header';
+      header.textContent = month.format('MMMM YYYY');
+      cal.appendChild(header);
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      thead.innerHTML = '<tr><th>S</th><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>S</th></tr>';
+      table.appendChild(thead);
+      const tbody = document.createElement('tbody');
+      const firstDay = month.startOf('month');
+      const startOffset = firstDay.day();
+      const daysInMonth = month.daysInMonth();
+      let day = 1;
+      for (let r = 0; r < 6; r++) {
+        const tr = document.createElement('tr');
+        for (let c = 0; c < 7; c++) {
+          const td = document.createElement('td');
+          if (r === 0 && c < startOffset || day > daysInMonth) {
+            td.className = 'other';
+          } else {
+            const current = month.date(day);
+            const key = current.format('YYYY-MM-DD');
+            const info = bookings[key];
+            if (info) {
+              if (info.SANTA && info.LATHUILE) td.className = 'both';
+              else if (info.SANTA) td.className = 'santa';
+              else if (info.LATHUILE) td.className = 'lathuile';
+            }
+            td.textContent = day;
+            day++;
+          }
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+        if (day > daysInMonth) break;
+      }
+      table.appendChild(tbody);
+      cal.appendChild(table);
+      return cal;
+    }
+
+    document.addEventListener('DOMContentLoaded', fetchPrenotazioni);
+  </script>
+</body>
+</html>
+
