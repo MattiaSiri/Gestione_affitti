@@ -5,8 +5,14 @@
   <title>Lista Prenotazioni</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 </head>
 <body>
   <div class="sidebar">
@@ -24,101 +30,34 @@
     <div class="content">
       <h1>Lista Prenotazioni</h1>
       <button class="btn" onclick="carica()">Aggiorna Tabella</button>
+      <div class="filters">
+        <select id="quickFilter">
+          <option value="all">Tutte</option>
+          <option value="future">Solo future</option>
+          <option value="oggi">Oggi</option>
+          <option value="cancellate">Cancellate</option>
+        </select>
+        <input type="text" id="fCheckIn" placeholder="Check-in da">
+        <input type="text" id="fCheckOut" placeholder="Check-out a">
+        <button id="exportCsv" class="btn">Esporta CSV</button>
+      </div>
       <div id="tabella">Caricamento in corso...</div>
+      <div id="totali"></div>
     </div>
   </div>
-  <script>
-    const URL_BASE = "https://script.google.com/macros/s/AKfycbyOt1OlCuLq0DsWsc0l2PvMGrZUZTbEu2C0bY7G5Tz6M4uZzF_UPJo94vSS8V1CM1xv/exec";
-
-    let dataTable;
-
-    function formatDate(value) {
-      const d = new Date(value);
-      if (isNaN(d)) return value ?? '';
-      return d.toLocaleDateString('it-IT');
-    }
-
-    function formatCurrency(value) {
-      const num = parseFloat(value);
-      if (isNaN(num)) return '';
-      return num.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' \u20AC';
-    }
-
-    async function carica() {
-      try {
-        const res = await fetch(`${URL_BASE}?foglio=PRENOTAZIONI`);
-        const data = await res.json();
-
-        const headers = data[0];
-        const dateCols = [];
-        const amountCols = [];
-        let idxStato = -1;
-
-        headers.forEach((h, i) => {
-          const lc = h.toLowerCase();
-          if (lc.includes('data') || lc.includes('check')) dateCols.push(i);
-          if (['totale','tasse','netto','importo','costo','prezzo','canone','pulizia','incassato'].some(k => lc.includes(k))) {
-            amountCols.push(i);
-          }
-          if (lc.includes('stato')) idxStato = i;
-        });
-
-        let html = '<table id="prenotazioni"><thead><tr>';
-        headers.forEach(col => html += `<th>${col}</th>`);
-        html += '</tr></thead><tbody>';
-
-        data.slice(1).forEach(row => {
-          const canc = idxStato >= 0 && (row[idxStato] || '').toString().toUpperCase() === 'CANCELLATA';
-          html += `<tr${canc ? ' class="cancellata"' : ''}>`;
-          row.forEach((cell, j) => {
-            let content = cell ?? '';
-            let cls = '';
-            if (content === '#VALUE!') content = '';
-            if (dateCols.includes(j)) {
-              content = formatDate(content);
-            } else if (amountCols.includes(j)) {
-              content = formatCurrency(content);
-              cls = 'importo';
-            }
-            html += `<td${cls ? ` class="${cls}"` : ''}>${content}</td>`;
-          });
-          html += '</tr>';
-        });
-        html += '</tbody></table>';
-
-        document.getElementById('tabella').innerHTML = html;
-
-        if (dataTable) {
-          dataTable.destroy();
-        }
-
-        $('#prenotazioni thead tr').clone(true).appendTo('#prenotazioni thead');
-
-        dataTable = $('#prenotazioni').DataTable({
-          orderCellsTop: true,
-          fixedHeader: true
-        });
-
-        $('#prenotazioni thead tr:eq(1) th').each(function (i) {
-          const title = $(this).text();
-          $(this).html('<input type="text" placeholder="Filtra ' + title + '" />');
-
-          $('input', this).on('keyup change', function () {
-            if (dataTable.column(i).search() !== this.value) {
-              dataTable
-                .column(i)
-                .search(this.value)
-                .draw();
-            }
-          });
-        });
-      } catch (error) {
-        document.getElementById('tabella').innerHTML = `<p style='color:red;'>Errore: ${error}</p>`;
-        console.error('Errore fetch:', error);
-      }
-    }
-
-    document.addEventListener("DOMContentLoaded", carica);
-  </script>
+<script>
+const URL_BASE = "https://script.google.com/macros/s/AKfycbyOt1OlCuLq0DsWsc0l2PvMGrZUZTbEu2C0bY7G5Tz6M4uZzF_UPJo94vSS8V1CM1xv/exec";
+let dataTable;
+let rowInfos = [];
+function formatDate(v){const d=new Date(v);if(isNaN(d)) return '';return d.toLocaleDateString('it-IT');}
+function formatCurrency(v){const n=parseFloat(v);if(isNaN(n)) return '';return n.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' \u20AC';}
+function portalIcon(p){p=(p||'').toLowerCase();if(p.includes('air')) return '<i class="fab fa-airbnb"></i> ';if(p.includes('book')) return '<i class="fas fa-book"></i> ';if(p.includes('dire')) return '<i class="fas fa-house"></i> ';return '';} 
+function aggiornaTotali(){let tot=0;const apt={};dataTable.rows({search:'applied'}).every(function(){const info=rowInfos[this.index()];if(!info) return;const n=info.netto;if(!isNaN(n)){tot+=n;if(info.app) apt[info.app]=(apt[info.app]||0)+n;}});let html='Totale Prenotazioni (visibili): '+formatCurrency(tot);for(const a in apt){html+=' | '+a+': '+formatCurrency(apt[a]);}document.getElementById('totali').textContent=html;}
+function applyFilters(){dataTable.draw();}
+$(document).on('change','#quickFilter,#fCheckIn,#fCheckOut',applyFilters);
+$.fn.dataTable.ext.search.push(function(settings,data,dataIndex){const info=rowInfos[dataIndex];if(!info)return true;const quick=$('#quickFilter').val();const today=new Date();today.setHours(0,0,0,0);if(quick==='future'&&(!info.checkIn||info.checkIn<today))return false;if(quick==='oggi'){if(!info.checkIn||info.checkIn.setHours(0,0,0,0)!==+today)return false;}if(quick==='cancellate'&&info.stato!=='CANCELLATA')return false;const fIn=$('#fCheckIn').val();const fOut=$('#fCheckOut').val();if(fIn){const s=flatpickr.parseDate(fIn,'d/m/Y');if(!info.checkIn||info.checkIn<s)return false;}if(fOut){const e=flatpickr.parseDate(fOut,'d/m/Y');if(!info.checkOut||info.checkOut>e)return false;}return true;});
+async function carica(){try{const res=await fetch(`${URL_BASE}?foglio=PRENOTAZIONI`);const data=await res.json();const headers=data[0];const idxIn=headers.findIndex(h=>h.toLowerCase().includes('check-in'));const idxOut=headers.findIndex(h=>h.toLowerCase().includes('check-out'));const idxStato=headers.findIndex(h=>h.toLowerCase().includes('stato'));const idxNet=headers.findIndex(h=>h.toLowerCase().includes('netto'));const idxApp=headers.findIndex(h=>h.toLowerCase().includes('appart'));const idxPort=headers.findIndex(h=>h.toLowerCase().includes('portale'));const idxTel=headers.findIndex(h=>h.toLowerCase().includes('tel'));const idxMail=headers.findIndex(h=>h.toLowerCase().includes('mail'));let html='<table id="prenotazioni"><thead><tr>';headers.forEach(h=>html+=`<th>${h}</th>`);html+='<th>Notti</th><th>Azioni</th></tr></thead><tbody>';rowInfos=[];const now=new Date();data.slice(1).forEach(row=>{const inD=new Date(row[idxIn]);const outD=new Date(row[idxOut]);const nights=!isNaN(inD)&&!isNaN(outD)?Math.round((outD-inD)/86400000):'';const stato=(row[idxStato]||'').toString().toUpperCase();const netto=parseFloat(row[idxNet])||0;const app=row[idxApp]||'';const canc=stato==='CANCELLATA';const soon=!isNaN(inD)&&(inD-now>=0)&&(inD-now<=604800000);rowInfos.push({checkIn:inD,checkOut:outD,stato,netto,app});html+=`<tr${canc?' class="cancellata"':''}${soon?' class="soon"':''}>`;row.forEach((cell,j)=>{let content=cell??'';let cls='';if(content==='#VALUE!')content='';if(j===idxStato){let b='';if(stato==='CONFERMATA')b='confermata';else if(stato==='CANCELLATA')b='cancellata';else if(stato.includes('PROB'))b='probabilita';else if(stato.includes('7'))b='settegiorni';content=`<span class="badge ${b}">${stato}</span>`;}else if(j===idxPort){content=portalIcon(content)+content;}else if(j===idxIn||j===idxOut){content=formatDate(content);}else if(j===idxNet){content=formatCurrency(content);cls='importo';}else if(['totale','tasse','importo','costo','prezzo','canone','pulizia','incassato'].some(k=>headers[j].toLowerCase().includes(k))){content=formatCurrency(content);cls='importo';}html+=`<td${cls?` class="${cls}"`:''}>${content}</td>`;});html+=`<td>${nights}</td>`;const tel=row[idxTel]||'';const mail=row[idxMail]||'';const actions=['<i class="fas fa-pencil-alt"></i>',tel?`<a href="tel:${tel}"><i class="fas fa-phone"></i></a>`:'<i class="fas fa-phone"></i>',mail?`<a href="mailto:${mail}"><i class="fas fa-envelope"></i></a>`:'<i class="fas fa-envelope"></i>','<i class="fas fa-trash"></i>'].join(' ');html+=`<td class="actions">${actions}</td></tr>`;});html+='</tbody></table>';document.getElementById('tabella').innerHTML=html;if(dataTable)dataTable.destroy();$('#prenotazioni thead tr').clone(true).appendTo('#prenotazioni thead');dataTable=$('#prenotazioni').DataTable({orderCellsTop:true,fixedHeader:true,dom:'Bfrtip',buttons:[{extend:'csvHtml5',title:'prenotazioni',className:'buttons-csv'},{extend:'colvis',text:'Mostra/Nascondi colonne'}]});$('#exportCsv').on('click',()=>dataTable.button('.buttons-csv').trigger());$('#prenotazioni thead tr:eq(1) th').each(function(i){const title=$(this).text();$(this).html('<input type="text" placeholder="Filtra '+title+'" />');$('input',this).on('keyup change',function(){if(dataTable.column(i).search()!==this.value){dataTable.column(i).search(this.value).draw();}});});dataTable.on('draw',aggiornaTotali);flatpickr('#fCheckIn',{dateFormat:'d/m/Y'});flatpickr('#fCheckOut',{dateFormat:'d/m/Y'});aggiornaTotali();}catch(e){document.getElementById('tabella').innerHTML=`<p style='color:red;'>Errore: ${e}</p>`;}}
+document.addEventListener('DOMContentLoaded',carica);
+</script>
 </body>
 </html>
