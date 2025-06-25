@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Importa Transazioniiiiii</title>
+  <title>Importa Transazioni</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -22,7 +22,7 @@
     </div>
     
     <div class="content">
-      <h1>Importa e Visualizza Transazioniwjdhgsb</h1>
+      <h1>Importa e Visualizza Transazioni</h1>
 
       <div class="actions">
         <button class="btn" onclick="importa()">📥 Importa Transazioni</button>
@@ -36,17 +36,14 @@
   </div>
 
   <script>
-    // URL del tuo Apps Script Web App
     const URL_BASE = "https://script.google.com/macros/s/AKfycbyOt1OlCuLq0DsWsc0l2PvMGrZUZTbEu2C0bY7G5Tz6M4uZzF_UPJo94vSS8V1CM1xv/exec";
 
     async function importa() {
       try {
-        const res = await fetch(`${URL_BASE}?azione=importa`, {
-          method: "POST"
-        });
+        const res = await fetch(`${URL_BASE}?azione=importa`);  // usa GET
         const text = await res.text();
         document.getElementById('import-msg').textContent = text;
-        carica(); // aggiorna subito dopo
+        carica();
       } catch (e) {
         alert("Errore durante l'importazione");
         console.error("Errore fetch importa():", e);
@@ -75,7 +72,6 @@
       }
     }
 
-    // Caricamento automatico all'apertura
     document.addEventListener("DOMContentLoaded", carica);
   </script>
 </body>
