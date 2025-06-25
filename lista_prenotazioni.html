@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <title>Lista Prenotazioni</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 </head>
 <body>
   <div class="sidebar">
@@ -27,24 +30,52 @@
   <script>
     const URL_BASE = "https://script.google.com/macros/s/AKfycbyOt1OlCuLq0DsWsc0l2PvMGrZUZTbEu2C0bY7G5Tz6M4uZzF_UPJo94vSS8V1CM1xv/exec";
 
+    let dataTable;
+
     async function carica() {
       try {
         const res = await fetch(`${URL_BASE}?foglio=PRENOTAZIONI`);
         const data = await res.json();
 
-        let html = "<table><thead><tr>";
+        let html = '<table id="prenotazioni"><thead><tr>';
         data[0].forEach(col => html += `<th>${col}</th>`);
-        html += "</tr></thead><tbody>";
+        html += '</tr></thead><tbody>';
         data.slice(1).forEach(row => {
-          html += "<tr>";
-          row.forEach(cell => html += `<td>${cell ?? ""}</td>`);
-          html += "</tr>";
+          html += '<tr>';
+          row.forEach(cell => html += `<td>${cell ?? ''}</td>`);
+          html += '</tr>';
         });
-        html += "</tbody></table>";
-        document.getElementById("tabella").innerHTML = html;
+        html += '</tbody></table>';
+
+        document.getElementById('tabella').innerHTML = html;
+
+        if (dataTable) {
+          dataTable.destroy();
+        }
+
+        $('#prenotazioni thead tr').clone(true).appendTo('#prenotazioni thead');
+
+        dataTable = $('#prenotazioni').DataTable({
+          orderCellsTop: true,
+          fixedHeader: true
+        });
+
+        $('#prenotazioni thead tr:eq(1) th').each(function (i) {
+          var title = $(this).text();
+          $(this).html('<input type="text" placeholder="Filtra ' + title + '" />');
+
+          $('input', this).on('keyup change', function () {
+            if (dataTable.column(i).search() !== this.value) {
+              dataTable
+                .column(i)
+                .search(this.value)
+                .draw();
+            }
+          });
+        });
       } catch (error) {
-        document.getElementById("tabella").innerHTML = `<p style='color:red;'>Errore: ${error}</p>`;
-        console.error("Errore fetch:", error);
+        document.getElementById('tabella').innerHTML = `<p style='color:red;'>Errore: ${error}</p>`;
+        console.error('Errore fetch:', error);
       }
     }
 
