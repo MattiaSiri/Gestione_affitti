@@ -277,3 +277,32 @@ tr:hover {
 .stat-card.durata {
   background-color: #8e44ad;
 }
+/* Status badges */
+.badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  color: #fff;
+}
+.badge.confermata { background-color: #28a745; }
+.badge.cancellata { background-color: #dc3545; }
+.badge.probabilita { background-color: #fd7e14; }
+.badge.settegiorni { background-color: #007bff; }
+
+/* Row highlight for upcoming check-in */
+#prenotazioni tbody tr.soon { background-color: #e1f5fe; }
+
+#prenotazioni td.actions i {
+  margin: 0 2px;
+  cursor: pointer;
+}
+
+.filters {
+  margin-bottom: 10px;
+}
+#totali {
+  margin-top: 10px;
+  font-weight: bold;
+}
