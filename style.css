@@ -209,3 +209,18 @@ tr:hover {
     width: 100%;
   }
 }
+/* Compact table styles for prenotazioni */
+#prenotazioni th, #prenotazioni td {
+  font-size: 12px;
+  padding: 4px 8px;
+}
+#prenotazioni td.importo {
+  text-align: right;
+}
+#prenotazioni tbody tr.cancellata {
+  background-color: #f8d7da;
+}
+#prenotazioni thead input {
+  font-size: 12px;
+  padding: 2px 4px;
+}
