@@ -32,17 +32,56 @@
 
     let dataTable;
 
+    function formatDate(value) {
+      const d = new Date(value);
+      if (isNaN(d)) return value ?? '';
+      return d.toLocaleDateString('it-IT');
+    }
+
+    function formatCurrency(value) {
+      const num = parseFloat(value);
+      if (isNaN(num)) return '';
+      return num.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' \u20AC';
+    }
+
     async function carica() {
       try {
         const res = await fetch(`${URL_BASE}?foglio=PRENOTAZIONI`);
         const data = await res.json();
 
+        const headers = data[0];
+        const dateCols = [];
+        const amountCols = [];
+        let idxStato = -1;
+
+        headers.forEach((h, i) => {
+          const lc = h.toLowerCase();
+          if (lc.includes('data') || lc.includes('check')) dateCols.push(i);
+          if (['totale','tasse','netto','importo','costo','prezzo','canone','pulizia','incassato'].some(k => lc.includes(k))) {
+            amountCols.push(i);
+          }
+          if (lc.includes('stato')) idxStato = i;
+        });
+
         let html = '<table id="prenotazioni"><thead><tr>';
-        data[0].forEach(col => html += `<th>${col}</th>`);
+        headers.forEach(col => html += `<th>${col}</th>`);
         html += '</tr></thead><tbody>';
+
         data.slice(1).forEach(row => {
-          html += '<tr>';
-          row.forEach(cell => html += `<td>${cell ?? ''}</td>`);
+          const canc = idxStato >= 0 && (row[idxStato] || '').toString().toUpperCase() === 'CANCELLATA';
+          html += `<tr${canc ? ' class="cancellata"' : ''}>`;
+          row.forEach((cell, j) => {
+            let content = cell ?? '';
+            let cls = '';
+            if (content === '#VALUE!') content = '';
+            if (dateCols.includes(j)) {
+              content = formatDate(content);
+            } else if (amountCols.includes(j)) {
+              content = formatCurrency(content);
+              cls = 'importo';
+            }
+            html += `<td${cls ? ` class="${cls}"` : ''}>${content}</td>`;
+          });
           html += '</tr>';
         });
         html += '</tbody></table>';
@@ -61,7 +100,7 @@
         });
 
         $('#prenotazioni thead tr:eq(1) th').each(function (i) {
-          var title = $(this).text();
+          const title = $(this).text();
           $(this).html('<input type="text" placeholder="Filtra ' + title + '" />');
 
           $('input', this).on('keyup change', function () {
