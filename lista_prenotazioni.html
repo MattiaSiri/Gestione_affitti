@@ -226,30 +226,31 @@
         window.location.href = `modifica.html?row=${idx}`;
       }
     });
-
-    async function cancellaPrenotazione(idx) {
-      try {
-        const res = await fetch(URL_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            azione: 'cancella',
-            foglio: 'PRENOTAZIONI',
-            riga: parseInt(idx) + 2,
-            stato: 'CANCELLATA'
-          })
-        });
-        const json = await res.json();
-        if (json.success) {
-          alert('Prenotazione cancellata con successo!');
-          carica();
-        } else {
-          throw new Error(json.message || 'Errore sconosciuto');
-        }
-      } catch (err) {
-        alert('Errore: ' + err.message);
+  async function cancellaPrenotazione(idx) {
+    const body = new URLSearchParams();
+    body.append('azione', 'cancella');
+    body.append('foglio', 'PRENOTAZIONI');
+    body.append('riga', parseInt(idx) + 2);
+    body.append('stato', 'CANCELLATA');
+  
+    try {
+      const res = await fetch(URL_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body
+      });
+  
+      const text = await res.text();
+      if (text.includes("success")) {
+        alert('Prenotazione cancellata!');
+        carica();
+      } else {
+        alert("Errore nella risposta: " + text);
       }
+    } catch (err) {
+      alert("Errore: " + err.message);
     }
+  }
   </script>
 </body>
 </html>
