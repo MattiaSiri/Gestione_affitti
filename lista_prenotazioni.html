@@ -60,5 +60,33 @@ $.fn.dataTable.ext.search.push(function(settings,data,dataIndex){const info=rowI
 async function carica(){try{const res=await fetch(`${URL_BASE}?foglio=PRENOTAZIONI`);const data=await res.json();const headers=data[0];const idxIn=headers.findIndex(h=>h.toLowerCase().includes('check-in'));const idxOut=headers.findIndex(h=>h.toLowerCase().includes('check-out'));const idxStato=headers.findIndex(h=>h.toLowerCase().includes('stato'));const idxNet=headers.findIndex(h=>h.toLowerCase().includes('netto'));const idxApp=headers.findIndex(h=>h.toLowerCase().includes('appart'));const idxPort=headers.findIndex(h=>h.toLowerCase().includes('portale'));const idxTel=headers.findIndex(h=>h.toLowerCase().includes('tel'));const idxMail=headers.findIndex(h=>h.toLowerCase().includes('mail'));let html='<table id="prenotazioni"><thead><tr>';headers.forEach(h=>html+=`<th>${h}</th>`);html+='<th>Notti</th><th>Azioni</th></tr></thead><tbody>';rowInfos=[];const now=new Date();data.slice(1).forEach(row=>{const inD=new Date(row[idxIn]);const outD=new Date(row[idxOut]);const nights=!isNaN(inD)&&!isNaN(outD)?Math.round((outD-inD)/86400000):'';const stato=(row[idxStato]||'').toString().toUpperCase();const netto=parseFloat(row[idxNet])||0;const app=row[idxApp]||'';const canc=stato==='CANCELLATA';const soon=!isNaN(inD)&&(inD-now>=0)&&(inD-now<=604800000);rowInfos.push({checkIn:inD,checkOut:outD,stato,netto,app});html+=`<tr${canc?' class="cancellata"':''}${soon?' class="soon"':''}>`;row.forEach((cell,j)=>{let content=cell??'';let cls='';if(content==='#VALUE!')content='';if(j===idxStato){let b='';if(stato==='CONFERMATA')b='confermata';else if(stato==='CANCELLATA')b='cancellata';else if(stato.includes('PROB'))b='probabilita';else if(stato.includes('7'))b='settegiorni';content=`<span class="badge ${b}">${stato}</span>`;}else if(j===idxPort){content=portalIcon(content)+content;}else if(j===idxIn||j===idxOut){content=formatDate(content);}else if(j===idxNet){content=formatCurrency(content);cls='importo';}else if(['totale','tasse','importo','costo','prezzo','canone','pulizia','incassato'].some(k=>headers[j].toLowerCase().includes(k))){content=formatCurrency(content);cls='importo';}html+=`<td${cls?` class="${cls}"`:''}>${content}</td>`;});html+=`<td>${nights}</td>`;const tel=row[idxTel]||'';const mail=row[idxMail]||'';const actions=['<i class="fas fa-pencil-alt"></i>',tel?`<a href="tel:${tel}"><i class="fas fa-phone"></i></a>`:'<i class="fas fa-phone"></i>',mail?`<a href="mailto:${mail}"><i class="fas fa-envelope"></i></a>`:'<i class="fas fa-envelope"></i>','<i class="fas fa-trash"></i>'].join(' ');html+=`<td class="actions">${actions}</td></tr>`;});html+='</tbody></table>';document.getElementById('tabella').innerHTML=html;if(dataTable)dataTable.destroy();$('#prenotazioni thead tr').clone(true).appendTo('#prenotazioni thead');dataTable=$('#prenotazioni').DataTable({orderCellsTop:true,fixedHeader:true,stateSave:true,dom:'Bfrtip',buttons:[{extend:'csvHtml5',title:'prenotazioni',className:'buttons-csv'},{extend:'colvis',text:'Mostra/Nascondi colonne'}]});$('#exportCsv').on('click',()=>dataTable.button('.buttons-csv').trigger());$('#prenotazioni thead tr:eq(1) th').each(function(i){const title=$(this).text();$(this).html('<input type="text" placeholder="Filtra '+title+'" />');$('input',this).on('keyup change',function(){if(dataTable.column(i).search()!==this.value){dataTable.column(i).search(this.value).draw();}});});dataTable.on('draw',aggiornaTotali);flatpickr('#fCheckIn',{dateFormat:'d/m/Y'});flatpickr('#fCheckOut',{dateFormat:'d/m/Y'});aggiornaTotali();}catch(e){document.getElementById('tabella').innerHTML=`<p style='color:red;'>Errore: ${e}</p>`;}}
 document.addEventListener('DOMContentLoaded',carica);
 </script>
+<script>
+  function cancellaPrenotazione(idx) {
+    fetch(URL_BASE, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ foglio: "PRENOTAZIONI", indice: idx, stato: "CANCELLATA" })
+    })
+    .then(() => carica())
+    .catch(() => alert("Errore durante la cancellazione"));
+  }
+
+  document.addEventListener("click", function(e) {
+    const trash = e.target.closest(".fa-trash");
+    if (trash) {
+      const tr = trash.closest("tr");
+      const idx = tr && tr.querySelector("td")?.textContent?.trim();
+      if (idx) cancellaPrenotazione(idx);
+      return;
+    }
+
+    const pencil = e.target.closest(".fa-pencil-alt");
+    if (pencil) {
+      const tr = pencil.closest("tr");
+      const idx = tr && tr.querySelector("td")?.textContent?.trim();
+      if (idx) window.location.href = `modifica.html?row=${encodeURIComponent(idx)}`;
+    }
+  });
+</script>
 </body>
 </html>
