@@ -36,8 +36,48 @@
             <p id="totEntrate">-</p>
           </div>
         </div>
-      </div>
-      <div class="actions">
+        <div class="stat-card ospiti">
+          <i class="fa-solid fa-users stat-icon"></i>
+          <div class="stat-info">
+            <h3>Ospiti anno</h3>
+            <p id="totOspiti">-</p>
+          </div>
+        </div>
+        <div class="stat-card durata">
+          <i class="fa-solid fa-clock stat-icon"></i>
+          <div class="stat-info">
+            <h3>Durata media</h3>
+            <p id="avgStay">-</p>
+          </div>
+        </div>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <h3>Entrate Santa</h3>
+            <p id="entrateSanta">-</p>
+          </div>
+          <div class="kpi-card">
+            <h3>Entrate La Thuile</h3>
+            <p id="entrateLaThuile">-</p>
+          </div>
+          <div class="kpi-card">
+            <h3>Tasso cancellazioni</h3>
+            <p id="cancelRate">-</p>
+          </div>
+          <div class="kpi-card">
+            <h3>Prossima libera Santa</h3>
+            <p id="freeSanta">-</p>
+          </div>
+          <div class="kpi-card">
+            <h3>Prossima libera La Thuile</h3>
+            <p id="freeLaThuile">-</p>
+          </div>
+          <div class="kpi-card">
+            <h3>Prenotazioni future</h3>
+            <p id="futureConf">-</p>
+          </div>
+        </div>
+        <div class="actions">
         <a class="btn" href="lista_prenotazioni.html">Lista Prenotazioni</a>
         <a class="btn" href="lista_movimenti.html">Lista Movimenti</a>
       </div>
@@ -46,8 +86,27 @@
         <button class="btn" onclick="caricaDashboard()">Aggiorna</button>
         <div id="dashboard">Caricamento in corso...</div>
       </div>
+      <div class="charts">
+        <div class="card chart-card">
+          <h2>Entrate nette mensili</h2>
+          <canvas id="chartRevenue"></canvas>
+        </div>
+        <div class="card chart-card">
+          <h2>Tasso di occupazione</h2>
+          <canvas id="chartOccupancy"></canvas>
+        </div>
+        <div class="card chart-card">
+          <h2>Distribuzione portali</h2>
+          <canvas id="chartPortal"></canvas>
+        </div>
+        <div class="card chart-card">
+          <h2>Prenotazioni mensili</h2>
+          <canvas id="chartBookings"></canvas>
+        </div>
+      </div>
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     const URL_BASE = "https://script.google.com/macros/s/AKfycbyOt1OlCuLq0DsWsc0l2PvMGrZUZTbEu2C0bY7G5Tz6M4uZzF_UPJo94vSS8V1CM1xv/exec";
 
@@ -65,13 +124,155 @@
       try {
         const prenRes = await fetch(`${URL_BASE}?foglio=PRENOTAZIONI`);
         const prenData = await prenRes.json();
-        document.getElementById('totPren').textContent = prenData.length - 1;
+
+        const headers = prenData[0];
+        const rows = prenData.slice(1);
+        document.getElementById('totPren').textContent = rows.length;
+
+        const idxApp = headers.indexOf('Appartamento');
+        const idxPort = headers.indexOf('Portale');
+        const idxIn = headers.indexOf('Check-in');
+        const idxOut = headers.indexOf('Check-out');
+        const idxOsp = headers.findIndex(h => h.toLowerCase().includes('ospit'));
+        const idxNet = headers.findIndex(h => h.toLowerCase().includes('netto'));
+        const idxStato = headers.findIndex(h => h.toLowerCase().includes('stato'));
+
+        const now = new Date();
+        const thisYear = now.getFullYear();
+
+        const months = [];
+        const monthlyNet = new Array(12).fill(0);
+        const monthlyBookings = new Array(12).fill(0);
+        const occSanta = new Array(12).fill(0);
+        const occLaThuile = new Array(12).fill(0);
+        const daysMonth = [];
+        for (let i = 0; i < 12; i++) {
+          const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+          months.push(d.toLocaleDateString('it-IT', { month: 'short' }));
+          daysMonth.push(new Date(now.getFullYear(), now.getMonth() + i + 1, 0).getDate());
+        }
+
+        const portalCount = {};
+        let totOspiti = 0;
+        let totSanta = 0;
+        let totLaThuile = 0;
+        let canc = 0;
+        let futureConf = 0;
+        let staySum = 0;
+        let stayCount = 0;
+
+        const bookings = { SANTA: [], LATHUILE: [] };
+
+        rows.forEach(r => {
+          const stato = (r[idxStato] || '').toString().toUpperCase();
+          if (stato === 'CANCELLATA') canc++;
+
+          const apt = (r[idxApp] || '').toString().toUpperCase();
+          const portale = r[idxPort] || '';
+          const inDate = parseDate(r[idxIn]);
+          const outDate = parseDate(r[idxOut]);
+          const ospiti = parseInt(r[idxOsp]) || 0;
+          const netto = parseFloat(r[idxNet]) || 0;
+
+          if (portale) portalCount[portale] = (portalCount[portale] || 0) + 1;
+
+          if (!isNaN(inDate)) {
+            const diff = (inDate.getFullYear() - now.getFullYear()) * 12 + inDate.getMonth() - now.getMonth();
+            if (diff >= 0 && diff < 12) {
+              monthlyNet[diff] += netto;
+              monthlyBookings[diff] += 1;
+            }
+          }
+
+          if (!isNaN(inDate) && !isNaN(outDate)) {
+            for (let m = 0; m < 12; m++) {
+              const mStart = new Date(now.getFullYear(), now.getMonth() + m, 1);
+              const mEnd = new Date(now.getFullYear(), now.getMonth() + m + 1, 0, 23, 59, 59);
+              const start = Math.max(inDate, mStart);
+              const end = Math.min(outDate, new Date(mEnd.getTime() + 1));
+              if (end > start) {
+                const days = Math.floor((end - start) / 86400000);
+                if (apt.includes('SANTA')) occSanta[m] += days; else if (apt.includes('LATHUILE')) occLaThuile[m] += days;
+              }
+            }
+          }
+
+          if (stato !== 'CANCELLATA') {
+            if (apt.includes('SANTA')) totSanta += netto; else if (apt.includes('LATHUILE')) totLaThuile += netto;
+            if (!isNaN(inDate) && inDate >= now) futureConf++;
+            if (!isNaN(inDate) && !isNaN(outDate)) {
+              const stay = (outDate - inDate) / 86400000;
+              if (stay > 0) { staySum += stay; stayCount++; }
+            }
+            if (!isNaN(inDate) && inDate.getFullYear() === thisYear) totOspiti += ospiti;
+            if (apt.includes('SANTA') || apt.includes('LATHUILE')) {
+              bookings[apt.includes('SANTA') ? 'SANTA' : 'LATHUILE'].push({ start: inDate, end: outDate });
+            }
+          }
+        });
+
+        function nextFree(arr) {
+          arr = arr.filter(b => !isNaN(b.start) && !isNaN(b.end)).sort((a, b) => a.start - b.start);
+          let date = now;
+          for (const b of arr) {
+            if (date < b.start && (b.start - date) / 86400000 > 0) return date;
+            if (date >= b.start && date < b.end) date = new Date(b.end);
+          }
+          return date;
+        }
+
+        const freeSanta = nextFree(bookings.SANTA);
+        const freeLaThuile = nextFree(bookings.LATHUILE);
+        const cancRate = rows.length ? (canc / rows.length * 100) : 0;
+        const avgStay = stayCount ? (staySum / stayCount) : 0;
+
+        document.getElementById('totOspiti').textContent = totOspiti;
+        document.getElementById('entrateSanta').textContent = totSanta.toFixed(2);
+        document.getElementById('entrateLaThuile').textContent = totLaThuile.toFixed(2);
+        document.getElementById('cancelRate').textContent = cancRate.toFixed(1) + '%';
+        document.getElementById('freeSanta').textContent = formatDate(freeSanta.toISOString());
+        document.getElementById('freeLaThuile').textContent = formatDate(freeLaThuile.toISOString());
+        document.getElementById('futureConf').textContent = futureConf;
+        document.getElementById('avgStay').textContent = avgStay.toFixed(1);
 
         const movRes = await fetch(`${URL_BASE}?foglio=MOVIMENTI`);
         const movData = await movRes.json();
         const idxImp = movData[0].indexOf('Importo');
         const totale = movData.slice(1).reduce((sum, r) => sum + parseFloat(r[idxImp] || 0), 0);
         document.getElementById('totEntrate').textContent = totale.toFixed(2);
+
+        const occRateSanta = occSanta.map((d, i) => Math.round((d / daysMonth[i]) * 100));
+        const occRateLaThuile = occLaThuile.map((d, i) => Math.round((d / daysMonth[i]) * 100));
+
+        new Chart(document.getElementById('chartRevenue').getContext('2d'), {
+          type: 'bar',
+          data: { labels: months, datasets: [{ label: 'Entrate nette', data: monthlyNet, backgroundColor: '#1abc9c' }] },
+          options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+
+        new Chart(document.getElementById('chartOccupancy').getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: months,
+            datasets: [
+              { label: 'Santa', data: occRateSanta, backgroundColor: '#3498db' },
+              { label: 'La Thuile', data: occRateLaThuile, backgroundColor: '#f39c12' }
+            ]
+          },
+          options: { responsive: true, scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } } }
+        });
+
+        new Chart(document.getElementById('chartPortal').getContext('2d'), {
+          type: 'pie',
+          data: { labels: Object.keys(portalCount), datasets: [{ data: Object.values(portalCount), backgroundColor: ['#1abc9c', '#e74c3c', '#3498db', '#9b59b6', '#f1c40f'] }] },
+          options: { responsive: true }
+        });
+
+        new Chart(document.getElementById('chartBookings').getContext('2d'), {
+          type: 'bar',
+          data: { labels: months, datasets: [{ label: 'Prenotazioni', data: monthlyBookings, backgroundColor: '#8e44ad' }] },
+          options: { responsive: true, plugins: { legend: { display: false } } }
+        });
       } catch (e) {
         console.error('Errore statistiche:', e);
       }

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Modifica Prenotazione</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Modifica Prenotazione</h1>
+    <form id="formPrenotazione">
+      <div id="campiPrenotazione"></div>
+      <button type="submit">Salva</button>
+    </form>
+    <p id="msg" style="color: green;"></p>
+  </div>
+
+  <script>
+    const URL_BASE = "https://script.google.com/macros/s/AKfycbyOt1OlCuLq0DsWsc0l2PvMGrZUZTbEu2C0bY7G5Tz6M4uZzF_UPJo94vSS8V1CM1xv/exec";
+    const rowIndex = new URLSearchParams(window.location.search).get('row');
+    let headers = [];
+    let originalRow = [];
+
+    async function caricaDati() {
+      try {
+        const res = await fetch(`${URL_BASE}?foglio=PRENOTAZIONI`);
+        const data = await res.json();
+        headers = data[0];
+        originalRow = data[parseInt(rowIndex) + 1];
+
+        const container = document.getElementById('campiPrenotazione');
+        container.innerHTML = '';
+        headers.forEach((header, i) => {
+          const value = originalRow[i] || '';
+          const inputId = `campo_${i}`;
+          const isDate = header.toLowerCase().includes("data") || header.toLowerCase().includes("check");
+          container.innerHTML += `
+            <label for="${inputId}">${header}</label><br>
+            <input type="${isDate ? 'text' : 'text'}" id="${inputId}" name="${header}" value="${value}"><br><br>
+          `;
+          if (isDate) {
+            flatpickr(`#${inputId}`, { dateFormat: 'd/m/Y', allowInput: true });
+          }
+        });
+
+      } catch (e) {
+        alert("Errore durante il caricamento dati");
+        console.error(e);
+      }
+    }
+
+    document.getElementById('formPrenotazione').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const valori = [];
+      headers.forEach((_, i) => {
+        const input = document.getElementById(`campo_${i}`);
+        valori.push(input.value || '');
+      });
+
+      try {
+        const res = await fetch(URL_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            azione: 'modifica',
+            foglio: 'PRENOTAZIONI',
+            riga: parseInt(rowIndex) + 2, // +2 per includere intestazione
+            valori: valori
+          })
+        });
+        const json = await res.json();
+        if (json.success) {
+          document.getElementById('msg').textContent = "✅ Modificato con successo!";
+        } else {
+          throw new Error(json.message || 'Errore');
+        }
+      } catch (err) {
+        alert("Errore durante il salvataggio: " + err.message);
+      }
+    });
+
+    document.addEventListener("DOMContentLoaded", caricaDati);
+  </script>
+</body>
+</html>

@@ -1,215 +1,79 @@
-from playwright.sync_api import sync_playwright
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin
-import json
-import os
-import requests
 
-TELEGRAM_CHAT_IDS = ["1786578055", "1081444175"]
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Importa Transazioni</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Gestione Affitti</h2>
+    <ul>
+      <li><a href="index.html">Dashboard</a></li>
+      <li><a href="lista_prenotazioni.html">Prenotazioni</a></li>
+      <li><a href="lista_movimenti.html">Movimenti</a></li>
+      <li><a href="_nuovo.html" class="active">Importazioni</a></li>
+    </ul>
+  </div>
 
-EMAIL = os.getenv("EMAIL")
-PASSWORD = os.getenv("PASSWORD")
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+  <div class="main">
+    <div class="topbar">
+      <span class="account">Account</span>
+    </div>
 
-search_configs = [
-    {
-        "descrizione": "! Luglio - Agosto con piscina Europa !",
-        "url": "https://www.homeexchange.com/search-v2/Geographic%20area%20selected?bounds=30.164267161262302%2C-12.346516847718561%2C62.47665156352687%2C28.102743908782656&place_id=false&exchange_types=guest-wanted&duration_kind=one-week&date_ranges=2025-07--2025-08",
-        "file": "case_luglio_agosto_piscina.json"
-    },
-    {
-        "descrizione": "! Weekend Settembre - Dicembre !",
-        "url": "https://www.homeexchange.com/search-v2/Area%20geografica%20selezionata?bounds=30.164267161262302%2C-12.346516847718561%2C62.47665156352687%2C28.102743908782656&place_id=false&exchange_types=guest-wanted&duration_kind=week-end&date_ranges=2025-09--2025-10--2025-11--2025-12",
-        "file": "case_weekend_autunno.json"
-    },
-    {
-        "descrizione": "! Natale 2025-2026 !",
-        "url": "https://www.homeexchange.com/search-v2/Area%20geografica%20selezionata?bounds=30.164267161262302%2C-12.346516847718561%2C62.47665156352687%2C28.102743908782656&place_id=false&flexibility=7&exchange_types=guest-wanted&date_ranges=2025-12-25_2026-01-01",
-        "file": "case_natale_2025_2026.json"
-    },
-    {
-        "descrizione": "! Case preferite aggiornate !",
-        "url": "https://www.homeexchange.com/search-v2/Area%20geografica%20selezionata?bounds=25.3897093197551%2C-16.881759294409818%2C62.314284650026536%2C27.739745541780792&place_id=false&favorite=true&exchange_types=guest-wanted&duration_kind=one-week&date_ranges=2025-06--2025-07--2025-08--2025-09--2025-10--2025-11--2025-12--2026-01--2026-02--2026-03--2026-04--2026-05--2026-06",
-        "file": "case_preferite.json"
+    <div class="content">
+      <h1>Importa e Visualizza Transazioni</h1>
+
+      <div class="actions">
+        <button class="btn" onclick="importa()">📥 Importa Transazioni</button>
+        <button class="btn" onclick="carica()">🔄 Aggiorna Tabella</button>
+      </div>
+
+      <p id="import-msg" style="text-align:center; margin-top:10px; color:green;"></p>
+
+      <div id="tabella">Caricamento in corso...</div>
+    </div>
+  </div>
+
+  <script>
+    const URL_BASE = "https://script.google.com/macros/s/AKfycbyOt1OlCuLq0DsWsc0l2PvMGrZUZTbEu2C0bY7G5Tz6M4uZzF_UPJo94vSS8V1CM1xv/exec";
+
+    async function importa() {
+      try {
+        const res = await fetch(`${URL_BASE}?azione=importa`, { method: "POST" });
+        const text = await res.text();
+        document.getElementById('import-msg').textContent = text;
+      } catch (e) {
+        alert("Errore durante l'importazione");
+        console.error("Errore importa():", e);
+      }
     }
 
-]
+    async function carica() {
+      try {
+        const res = await fetch(`${URL_BASE}?foglio=IMPORTAZIONE`);
+        const data = await res.json();
 
-def invia_telegram(messaggio):
-    for chat_id in TELEGRAM_CHAT_IDS:
-        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        payload = {
-            "chat_id": chat_id,
-            "text": messaggio,
-            "parse_mode": "HTML"
-        }
-        response = requests.post(url, data=payload)
-        if response.status_code != 200:
-            print(f"Errore invio messaggio a {chat_id}: {response.status_code} - {response.text}")
+        let html = "<table><thead><tr>";
+        data[0].forEach(col => html += `<th>${col}</th>`);
+        html += "</tr></thead><tbody>";
+        data.slice(1).forEach(row => {
+          html += "<tr>";
+          row.forEach(cell => html += `<td>${cell}</td>`);
+          html += "</tr>";
+        });
+        html += "</tbody></table>";
 
-def invia_telegram_foto(url_foto, caption):
-    for chat_id in TELEGRAM_CHAT_IDS:
-        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto"
-        data = {
-            "chat_id": chat_id,
-            "photo": url_foto,
-            "caption": caption,
-            "parse_mode": "HTML"
-        }
-        response = requests.post(url, data=data)
-        if response.status_code != 200:
-            print(f"Errore invio foto a {chat_id}: {response.status_code} - {response.text}")
+        document.getElementById("tabella").innerHTML = html;
+      } catch (e) {
+        document.getElementById("tabella").innerHTML = `<p style='color:red;'>Errore: ${e}</p>`;
+        console.error("Errore carica():", e);
+      }
+    }
 
-def estrai_case(html):
-    soup = BeautifulSoup(html, "html.parser")
-    risultati = []
-    base_url = "https://www.homeexchange.com"
+    document.addEventListener("DOMContentLoaded", carica);
+  </script>
+</body>
+</html>
 
-    for container in soup.select("div.search-result.col-sm-6"):
-        articolo = container.find("article", class_="homebox")
-        if not articolo:
-            continue
-
-        titolo_tag = articolo.select_one("a.ellipsis[title]")
-        titolo = titolo_tag.get("title") if titolo_tag else "No titolo"
-        link_rel = titolo_tag.get("href") if titolo_tag else None
-        link = urljoin(base_url, link_rel) if link_rel else None
-
-        location_tag = articolo.select_one("div.home-location span")
-        location = location_tag.get_text(strip=True) if location_tag else None
-
-        rating_tag = articolo.select_one("span.home-rating span.rating")
-        rating = rating_tag.get_text(strip=True) if rating_tag else None
-
-        capacity_tag = articolo.select_one("span.capacity")
-        capacity = capacity_tag.get_text(strip=True) if capacity_tag else None
-
-        gp_tag = articolo.select_one("span.homebox-review-gp")
-        gp_per_night = gp_tag.get_text(strip=True) if gp_tag else None
-
-        img_url = None
-        img_tag = articolo.select_one("a.home-image-search.homebox-user-profile")
-        if img_tag:
-            data_bg = img_tag.get("data-bg")
-            if data_bg:
-                start = data_bg.find('url("')
-                end = data_bg.find('")', start)
-                if start != -1 and end != -1:
-                    img_url = data_bg[start+5:end]
-            else:
-                style = img_tag.get("style")
-                if style:
-                    start = style.find('url("')
-                    end = style.find('")', start)
-                    if start != -1 and end != -1:
-                        img_url = style[start+5:end]
-
-        try:
-            prezzo_val = int(gp_per_night.split()[0]) if gp_per_night else 0
-        except:
-            prezzo_val = 0
-
-        if prezzo_val > 150:
-            risultati.append({
-                "titolo": titolo,
-                "link": link,
-                "location": location,
-                "rating": rating,
-                "capacity": capacity,
-                "gp_per_night": gp_per_night,
-                "img_url": img_url
-            })
-
-    return risultati
-
-def main():
-    STORAGE_DIR = "./storico_case"
-    os.makedirs(STORAGE_DIR, exist_ok=True)
-
-    user_data_dir = "./user_data"
-    with sync_playwright() as p:
-        context = p.chromium.launch_persistent_context(user_data_dir=user_data_dir, headless=True)
-        page = context.new_page()
-
-        page.goto("https://www.homeexchange.com")
-        page.wait_for_load_state("networkidle")
-
-        if page.locator("span.gp-number").count() == 0:
-            print("Non loggato, faccio login.")
-            page.click("button#signin")
-            page.wait_for_selector("input#email", state="visible", timeout=60000)
-            page.fill("input#email", EMAIL)
-            page.fill("input#password", PASSWORD)
-            page.click("button.btn-ajax.btn.btn-lg.btn-primary.btn-block")
-            try:
-                page.wait_for_selector("a.dropdown-toggle span.gp-number", timeout=20000)
-                print("Login effettuato con successo.")
-            except:
-                print("Attenzione: non sono riuscito a confermare il login.")
-
-        for config in search_configs:
-            file_path = os.path.join(STORAGE_DIR, config["file"])
-
-            print(f"\nAnalizzo: {config['descrizione']}")
-            page.goto(config["url"])
-            page.wait_for_selector("div.search-result", timeout=30000)
-            page.select_option("select#sort_type", value="most_recent_availabilities")
-            page.wait_for_selector("div.search-result", timeout=30000)
-            html = page.content()
-            nuove_case = estrai_case(html)
-
-            if os.path.exists(file_path):
-                with open(file_path, "r") as f:
-                    vecchie_case = json.load(f)
-            else:
-                if nuove_case:
-                    prima_casa = nuove_case[0]
-                    with open(file_path, "w") as f:
-                        json.dump([prima_casa], f, indent=2)
-                    print(f"Prima esecuzione per {config['descrizione']} – salvata solo la prima casa.")
-                else:
-                    print(f"Prima esecuzione per {config['descrizione']} – nessuna casa trovata.")
-                continue
-
-            link_vecchi = {c["link"] for c in vecchie_case}
-            ultimi_5 = [c["link"] for c in vecchie_case[-5:]]
-
-            solo_nuove = []
-            consecutive_last5 = 0
-            for casa in nuove_case:
-                link = casa["link"]
-                if link in ultimi_5:
-                    consecutive_last5 += 1
-                    if consecutive_last5 == 2:
-                        break
-                    continue
-                else:
-                    consecutive_last5 = 0
-
-                if link not in link_vecchi:
-                    solo_nuove.append(casa)
-
-            if solo_nuove:
-                print(f"Nuove case trovate: {len(solo_nuove)}")
-                for c in solo_nuove:
-                    caption = (
-                        f"{config['descrizione']}\n"
-                        f"<b>{c['titolo']}</b>\n"
-                        f"{c['location']}\n"
-                        f"Capacità: {c['capacity']}\n"
-                        f"Prezzo: {c['gp_per_night']}\n"
-                        f"<a href=\"{c['link']}\">Link all'annuncio</a>"
-                    )
-                    if c['img_url']:
-                        invia_telegram_foto(c['img_url'], caption)
-                    else:
-                        invia_telegram(caption)
-                with open(file_path, "w") as f:
-                    json.dump(vecchie_case + solo_nuove, f, indent=2)
-            else:
-                print("Nessuna nuova casa.")
-
-        context.close()
-
-if __name__ == "__main__":
-    main()
