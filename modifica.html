@@ -4,83 +4,98 @@
   <meta charset="UTF-8">
   <title>Modifica Prenotazione</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <style>
+    .form-group { margin-bottom: 10px; }
+    label { display: block; font-weight: bold; }
+    input, textarea { width: 100%; padding: 6px; }
+    .btn { margin-top: 15px; }
+  </style>
 </head>
 <body>
-  <div class="container">
+  <div class="main">
     <h1>Modifica Prenotazione</h1>
-    <form id="formPrenotazione">
-      <div id="campiPrenotazione"></div>
-      <button type="submit">Salva</button>
-    </form>
-    <p id="msg" style="color: green;"></p>
+    <div id="formContainer">Caricamento...</div>
   </div>
 
   <script>
-    const URL_BASE = "https://script.google.com/macros/s/AKfycbyOt1OlCuLq0DsWsc0l2PvMGrZUZTbEu2C0bY7G5Tz6M4uZzF_UPJo94vSS8V1CM1xv/exec";
-    const rowIndex = new URLSearchParams(window.location.search).get('row');
-    let headers = [];
-    let originalRow = [];
+    const URL_BASE = "https://script.google.com/macros/s/AKfycbyWQXcZ8OaBPQvuDkYOBcaa4I3LCcHELCNCYggonBJl5XOwG6dqNcjPM8yPxC8xFHq2/exec";
+    const urlParams = new URLSearchParams(window.location.search);
+    const rowIndex = parseInt(urlParams.get("row")) + 2; // +2 per intestazione + indice 0-based
 
-    async function caricaDati() {
+    async function caricaPrenotazione() {
       try {
         const res = await fetch(`${URL_BASE}?foglio=PRENOTAZIONI`);
         const data = await res.json();
-        headers = data[0];
-        originalRow = data[parseInt(rowIndex) + 1];
+        const headers = data[0];
+        const values = data[rowIndex - 1]; // -1 perché JSON parte da riga 1
 
-        const container = document.getElementById('campiPrenotazione');
-        container.innerHTML = '';
-        headers.forEach((header, i) => {
-          const value = originalRow[i] || '';
-          const inputId = `campo_${i}`;
-          const isDate = header.toLowerCase().includes("data") || header.toLowerCase().includes("check");
-          container.innerHTML += `
-            <label for="${inputId}">${header}</label><br>
-            <input type="${isDate ? 'text' : 'text'}" id="${inputId}" name="${header}" value="${value}"><br><br>
-          `;
-          if (isDate) {
-            flatpickr(`#${inputId}`, { dateFormat: 'd/m/Y', allowInput: true });
+        const form = document.createElement("form");
+        form.id = "editForm";
+
+        headers.forEach((h, i) => {
+          const group = document.createElement("div");
+          group.className = "form-group";
+          const label = document.createElement("label");
+          label.textContent = h;
+          const input = document.createElement("input");
+          input.name = `col_${i}`;
+          input.value = values[i] || '';
+          group.appendChild(label);
+          group.appendChild(input);
+          form.appendChild(group);
+        });
+
+        const btn = document.createElement("button");
+        btn.type = "submit";
+        btn.className = "btn";
+        btn.textContent = "Salva modifiche";
+        form.appendChild(btn);
+
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const formData = new FormData(form);
+          const valori = [];
+
+          for (let i = 0; i < headers.length; i++) {
+            valori.push(formData.get(`col_${i}`));
+          }
+
+          const body = {
+            azione: "modifica",
+            foglio: "PRENOTAZIONI",
+            riga: rowIndex,
+            valori: valori
+          };
+
+          const resp = await fetch(URL_BASE, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+          });
+
+          const text = await resp.text();
+          try {
+            const json = JSON.parse(text);
+            if (json.success) {
+              alert("✅ Prenotazione aggiornata!");
+              window.location.href = "lista_prenotazioni.html";
+            } else {
+              alert("❌ Errore: " + json.message);
+            }
+          } catch {
+            alert("⚠️ Risposta inattesa: " + text);
           }
         });
 
-      } catch (e) {
-        alert("Errore durante il caricamento dati");
-        console.error(e);
+        document.getElementById("formContainer").innerHTML = "";
+        document.getElementById("formContainer").appendChild(form);
+
+      } catch (err) {
+        document.getElementById("formContainer").innerHTML = `<p style="color:red;">Errore nel caricamento: ${err.message}</p>`;
       }
     }
 
-    document.getElementById('formPrenotazione').addEventListener('submit', async function (e) {
-      e.preventDefault();
-      const valori = [];
-      headers.forEach((_, i) => {
-        const input = document.getElementById(`campo_${i}`);
-        valori.push(input.value || '');
-      });
-
-      try {
-        const res = await fetch(URL_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            azione: 'modifica',
-            foglio: 'PRENOTAZIONI',
-            riga: parseInt(rowIndex) + 2, // +2 per includere intestazione
-            valori: valori
-          })
-        });
-        const json = await res.json();
-        if (json.success) {
-          document.getElementById('msg').textContent = "✅ Modificato con successo!";
-        } else {
-          throw new Error(json.message || 'Errore');
-        }
-      } catch (err) {
-        alert("Errore durante il salvataggio: " + err.message);
-      }
-    });
-
-    document.addEventListener("DOMContentLoaded", caricaDati);
+    document.addEventListener("DOMContentLoaded", caricaPrenotazione);
   </script>
 </body>
 </html>
